@@ -12,5 +12,8 @@
   "keywords": [],
   "author": "Thiago Parise",
   "license": "ISC",
-  "description": "Monorepo para la práctica de la asignatura Sistemas Distribuidos UNMDP"
+  "description": "Monorepo para la práctica de la asignatura Sistemas Distribuidos UNMDP",
+  "dependencies": {
+    "axios": "^1.11.0"
+  }
 }
