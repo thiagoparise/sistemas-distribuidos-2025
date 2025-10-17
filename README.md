@@ -1,46 +1,25 @@
-## Prácticas de Sistemas Distribuidos - UNMDP
+# Mini Práctica 4 - Hooks en React
 
-Este repositorio contiene los **ejercicios y materiales de la parte práctica** de la materia **Sistemas Distribuidos** de la **Universidad Nacional de Mar del Plata (UNMDP)**.
+Listado interactivo de Pokémons usando React Hooks.
 
----
-
-### 📂 Estructura del repositorio
-
-Cada práctica está organizada en su propia carpeta:
-
-Practica/  
-├─ Practica1/  
-│ ├─ package.json  
-│ ├─ package-lock.json  
-│ ├─ index.js  
-│ └─ teoría-y-ejercicios.pdf  
-├─ Practica2/  
-│ └─ ...  
-└─ Practica3/  
-└─ ...  
-
-
-- Cada carpeta contiene:  
-  - El código de los ejercicios en JavaScript/Node.js.  
-  - Archivos PDF con teoría y consignas de la práctica.  
-  - Dependencias gestionadas con `package.json` y `package-lock.json`.  
-
----
-
-### ⚙️ Configuración
-
-1. Clonar el repositorio:
+## Instalación
 
 ```bash
-git clone <URL_DEL_REPO>
-cd Practica
-
-2. Instalar dependencias:
-
 npm install
+npm run dev
+```
 
-Nota: node_modules/ no está versionado. Todas las dependencias se instalan automáticamente.
+## Ejercicio
 
-3. Ejecutar scripts de Node.js según la práctica:
+Crear un componente `PokemonList` que:
+- Obtenga los primeros 20 Pokémons de [PokeAPI](https://pokeapi.co)
+- Renderice cada uno como un `PokemonItem` clickeable
+- Muestre cuántas veces fue clickeado cada Pokémon
 
-node Practica1/index.js
+## Verificar
+
+Abre DevTools → Network y verifica que solo haya **una** llamada a la API.
+
+---
+
+📖 Ver [TUTORIAL.md](./TUTORIAL.md) para la teoría completa sobre hooks y ciclo de vida.
