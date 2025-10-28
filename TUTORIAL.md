@@ -1,164 +1,376 @@
-# Mini Practica 4 - Hooks
+# Mini Práctica 6 – Data Fetching en Next.js
 
-## Fundamentos de React en Next.js: Ciclo de vida, Hooks y Estado
+## Conocimiento previo necesario: React Contexts
 
-En React, la unidad fundamental de construcción es el componente. Hasta ahora se explicó que un componente es una función que devuelve una porción de interfaz (escrita en JSX). Sin embargo, detrás de ese concepto hay más: los componentes siguen un ciclo de vida.
+### ¿Qué es un contexto en React?
 
-## Ciclo de vida de un componente funcional
+En React, un contexto es una forma de compartir información entre componentes sin tener que pasar props manualmente a través de múltiples niveles. Es decir, cuando varios componentes necesitan acceder a los mismos datos (por ejemplo, un tema de color, el idioma de la aplicación o el estado de autenticación), en lugar de pasar esos datos de padre a hijo constantemente, podemos usar un contexto para que estén disponibles directamente donde se necesiten.
 
-Cada vez que React necesita mostrar o actualizar la interfaz, ejecuta ciertas fases:
+El contexto se crea con `React.createContext()` y luego se usa un `Provider` para "proveer" los datos, y los componentes hijos pueden acceder a esos datos con el hook `useContext`.
 
-### 1. Montaje (Mounting)
+### ¿Cómo funciona?
 
-Es el momento en que el componente aparece en pantalla por primera vez.
+1. Crear un contexto con `createContext`.
+2. Proveer el valor desde un componente padre usando `<Context.Provider>`.
+3. Consumir el valor en los hijos con `useContext`.
 
-- React ejecuta la función del componente y pinta el resultado en el navegador.
-- Aquí suele ser necesario inicializar datos o hacer llamadas a APIs.
+Esto evita el **prop drilling** (pasar props innecesariamente por muchos niveles).
 
-### 2. Actualización (Updating)
+### Ejemplo básico
+```javascript
+import React, { createContext, useContext, useState } from "react";
 
-Ocurre cada vez que cambian las props o el estado del componente.
+// 1. Crear el contexto
+const ThemeContext = createContext();
 
-- React vuelve a ejecutar la función y compara el resultado nuevo con el anterior para decidir qué actualizar en el DOM.
-
-### 3. Desmontaje (Unmounting)
-
-Es el momento en que el componente desaparece de la pantalla (por ejemplo, si se navega a otra página).
-
-- Aquí se limpian recursos como timers, suscripciones o listeners de eventos.
-
-> **Nota:** En los componentes de clase existían métodos especiales (componentDidMount, componentDidUpdate, componentWillUnmount). En los componentes de función modernos, estas fases se controlan con los hooks, principalmente useEffect.
-
-## ¿Qué son los hooks?
-
-Los hooks son funciones especiales que permiten usar las capacidades internas de React (estado, ciclo de vida, contexto, etc.) dentro de componentes de función.
-
-- Todos los hooks empiezan con `use`.
-- Se deben llamar siempre en el nivel superior del componente (no dentro de condicionales o loops).
-
-React ofrece hooks básicos como:
-
-- **useState**: manejar valores dinámicos y re-renderizar cuando cambian.
-- **useEffect**: manejar efectos secundarios (llamadas a APIs, timers, suscripciones, etc.).
-- **useContext**: compartir datos globales sin necesidad de pasar props en cada nivel.
-- **useRef**: guardar valores que persisten entre renders sin provocar re-render.
-- **useReducer**: alternativa a useState cuando el estado es complejo.
-
-Más adelante se pueden crear custom hooks, que combinan lógica reutilizable.
-
-## El hook useState
-
-Se utiliza para manejar el estado interno de un componente. El estado es cualquier dato que cambia con el tiempo y que, al hacerlo, provoca que el componente se vuelva a renderizar.
-```jsx
-import { useState } from "react";
-
-export default function Contador() {
-  // contador = valor actual
-  // setContador = función que lo actualiza
-  const [contador, setContador] = useState<number>(0);
+// 2. Crear un proveedor
+function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState("light");
 
   return (
-    <div>
-      <p>Contador: {contador}</p>
-      <button onClick={() => setContador(contador + 1)}>Incrementar</button>
-    </div>
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+// 3. Usar el contexto en un componente hijo
+function ThemeButton() {
+  const { theme, setTheme } = useContext(ThemeContext);
+
+  return (
+    <button onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+      Tema actual: {theme}
+    </button>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <ThemeButton />
+    </ThemeProvider>
   );
 }
 ```
 
-Cada vez que se llama a `setContador`, React vuelve a ejecutar el componente y muestra el nuevo valor.
+### Buena práctica
 
-El estado es privado al componente; no puede ser modificado directamente desde fuera, solo mediante props o funciones.
+Dentro de `app/contexts` → tener en un archivo único el contexto + el provider + un hook que permita usarlo (exportar directamente el `useContext(ThemeContext);` como una función). Esto es, para luego en el componente que lo consume, importar directamente esta función.
 
-## El hook useEffect
+También es importante inicializar los contextos con valores iniciales, pero esto lo veremos en otra actividad.
 
-Permite trabajar con efectos secundarios, es decir, con operaciones que afectan o dependen de algo externo al renderizado puro.
+---
 
-Su sintaxis es:
-```jsx
-useEffect(() => {
-  // Acción a ejecutar
-  return () => {
-    // Cleanup opcional
-  };
-}, [dependencias]);
-```
+## Data Fetching
 
-El segundo parámetro, el array de dependencias, define cuándo se ejecuta el efecto:
+En cualquier aplicación web moderna necesitamos traer datos de algún lado: una API, un archivo externo o incluso una base de datos propia. A este proceso se lo llama **Data Fetching**.
 
-- **Array vacío `[]`**: el efecto se ejecuta una sola vez, al montar el componente. Ideal para cargar datos iniciales desde una API.
-- **Dependencias `[x, y]`**: el efecto se ejecuta cada vez que cambien x o y. Útil cuando la acción depende de una variable de estado o de props.
-- **Sin array**: el efecto se ejecuta en cada renderizado. Esto rara vez es lo que se desea, ya que puede afectar el rendimiento.
+Next.js nos ofrece distintas formas de hacerlo, y elegir la adecuada depende de qué tipo de datos queremos mostrar y qué experiencia queremos para el usuario.
 
-### Ejemplo práctico:
-```jsx
+Los dos enfoques principales son:
+
+- **Client-side Data Fetching** (desde el navegador del usuario).
+- **Server-side Data Fetching** (desde el servidor antes de enviar la página).
+
+Además, veremos cómo mostrar estados de carga, cómo funciona React Query (una librería muy usada), y cómo aprovechar nuevas capacidades del App Router como Suspense.
+
+---
+
+## Client-side Data Fetching
+
+Es cuando los datos se piden después de que la página ya se renderizó en el navegador. Esto significa que al entrar a la página, inicialmente puede aparecer vacía (o con un "Loading…"), y luego se rellenan los datos.
+
+### Ejemplo básico con useState y useEffect
+```typescript
+"use client";
+
 import { useEffect, useState } from "react";
 
-export default function Reloj() {
-  const [hora, setHora] = useState<string>("");
+type User = {
+  id: number;
+  name: string;
+};
 
-  // Solo al montar
+export default function UserList() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const ahora = new Date().toLocaleTimeString();
-    setHora(ahora);
+    fetch("https://jsonplaceholder.typicode.com/users")
+      .then((res) => res.json())
+      .then((data: User[]) => {
+        setUsers(data);
+        setLoading(false);
+      });
   }, []);
 
-  return <p>Hora actual: {hora}</p>;
+  if (loading) return <p>Cargando...</p>;
+
+  return (
+    <ul>
+      {users.map((u) => (
+        <li key={u.id}>{u.name}</li>
+      ))}
+    </ul>
+  );
 }
 ```
 
-### Ejemplo con dependencia:
-```jsx
-import { useEffect, useState } from "react";
+Básicamente es lo que se vino haciendo las actividades pasadas.
 
-export default function DependenciaDemo() {
-  const [contador, setContador] = useState<number>(0);
+### Ventajas:
+- Permite mostrar datos dinámicos que cambian seguido.
+- Ideal para dashboards o contenido personalizado.
 
-  useEffect(() => {
-    console.log("El contador cambió:", contador);
-  }, [contador]); // Se ejecuta cada vez que cambia contador
+### Desventajas:
+- La primera carga puede estar vacía.
+- Peor SEO, porque los buscadores ven una página sin contenido inicial.
+
+---
+
+## Un mejor enfoque: TanStack React Query
+
+React Query (ahora TanStack Query) es una librería que simplifica muchísimo el manejo de datos en cliente. Ofrece:
+
+- **Cache automático:** guarda los resultados y evita pedir los mismos datos varias veces.
+- **Refetch automático:** actualiza datos cada cierto tiempo o al reenfocar la pestaña.
+- **Control de estados:** loading, error, success.
+- **Mutaciones (PATCH, POST, DELETE)** con manejo de cache.
+
+### Configuración básica
+
+Primero instalamos:
+```bash
+npm install @tanstack/react-query
+```
+
+Creamos un `QueryClientProvider` en nuestro `layout.tsx`:
+```typescript
+"use client";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactNode, useState } from "react";
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
+
+  return (
+    <html lang="es">
+      <body>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+### Hacer un GET con useQuery
+```typescript
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+
+type User = {
+  id: number;
+  name: string;
+};
+
+async function fetchUsers(): Promise<User[]> {
+  const res = await fetch("https://jsonplaceholder.typicode.com/users");
+  return res.json();
+}
+
+export default function UserList() {
+  const { data, isLoading, error } = useQuery<User[]>({
+    queryKey: ["users"], // clave del cache
+    queryFn: fetchUsers, // función que trae los datos
+  });
+
+  if (isLoading) return <p>Cargando...</p>;
+  if (error) return <p>Error al cargar</p>;
+
+  return (
+    <ul>
+      {data?.map((u) => (
+        <li key={u.id}>{u.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Hacer un PATCH con useMutation
+```typescript
+"use client";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+async function updateUser(id: number, name: string) {
+  const res = await fetch(`https://jsonplaceholder.typicode.com/users/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  return res.json();
+}
+
+export default function UpdateUser() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      updateUser(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] }); // refresca la lista
+    },
+  });
+
+  return (
+    <button onClick={() => mutation.mutate({ id: 1, name: "Nuevo Nombre" })}>
+      Actualizar Usuario 1
+    </button>
+  );
+}
+```
+
+### Puntos clave de React Query:
+
+- **queryKey:** identifica cada request en la cache.
+- **queryFn:** la función que trae los datos.
+- **useMutation:** para crear, actualizar o eliminar datos.
+- **invalidateQueries:** refresca datos en cache después de una mutación.
+
+### Buena práctica
+
+Cuando utilizamos este enfoque, es tener 2 carpetas dentro de `app`:
+
+- **/services** → donde están las funciones que llaman a la api (sea nuestra o externa)
+- **/hooks** → donde están los hooks en distintos archivos (agrupados según nuestro criterio) que consumen los servicios
+
+Y luego importar esos hooks dentro de cada componente donde los necesitemos.
+
+Los errores los podemos manejar en distintos lugares de acuerdo a su naturaleza. Esto lo veremos más adelante.
+
+---
+
+## Server-side Data Fetching
+
+Aquí los datos se cargan en el servidor antes de mandar el HTML al navegador. En el App Router, los componentes son **Server Components** por defecto, lo que facilita mucho esto.
+
+### Ejemplo básico
+```typescript
+// app/products/page.tsx
+
+type Product = {
+  id: number;
+  title: string;
+};
+
+export default async function ProductsPage() {
+  const res = await fetch("https://fakestoreapi.com/products");
+  const products: Product[] = await res.json();
 
   return (
     <div>
-      <p>{contador}</p>
-      <button onClick={() => setContador(contador + 1)}>Sumar</button>
+      <h1>Productos</h1>
+      <ul>
+        {products.map((p) => (
+          <li key={p.id}>{p.title}</li>
+        ))}
+      </ul>
     </div>
   );
 }
 ```
 
-## Renderizar listas y la importancia de key
+En este caso, el navegador recibe ya la lista de productos renderizada en el HTML.
 
-Cuando se renderizan arrays en React con `.map()`, se debe asignar una propiedad `key` única a cada elemento.
+### Ventajas:
+- Mejor SEO.
+- Experiencia inicial más rápida.
+- Mayor seguridad (las API keys no viajan al cliente).
 
-La razón es que React utiliza un proceso llamado **reconciliación** para decidir qué partes del DOM deben actualizarse. Si los elementos no tienen una key clara, React no puede identificar cuál cambió, y terminará volviendo a renderizar toda la lista, lo que puede generar errores visuales y pérdida de rendimiento.
+### Desventajas:
+- Los datos se cargan solo al render inicial.
+- Si el usuario interactúa mucho, puede ser necesario combinar con client-side fetching.
 
-### Ejemplo incorrecto (sin key):
-```jsx
-<ul>
-  {["A", "B", "C"].map((item) => (
-    <li>{item}</li>
-  ))}
-</ul>
+### Usando una route.ts (API Route en Next.js)
+
+Podemos crear un endpoint interno para encapsular la lógica:
+```typescript
+// app/api/products/route.ts
+
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  const res = await fetch("https://fakestoreapi.com/products");
+  const data = await res.json();
+  return NextResponse.json(data);
+}
 ```
 
-### Ejemplo correcto (con key):
-```jsx
-<ul>
-  {["A", "B", "C"].map((item, index) => (
-    <li key={index}>{item}</li>
-  ))}
-</ul>
+Y consumirlo desde un componente de servidor:
+```typescript
+// app/products/page.tsx
+
+export default async function ProductsPage() {
+  const res = await fetch("http://localhost:3000/api/products", {
+    cache: "no-store", // evita cache si queremos datos frescos
+  });
+  const products = await res.json();
+
+  return (
+    <div>
+      <h1>Productos</h1>
+      {products.map((p: any) => (
+        <div key={p.id}>{p.title}</div>
+      ))}
+    </div>
+  );
+}
 ```
 
-Aunque se puede usar el `index` del array como key, lo más recomendable es usar un identificador único proveniente de los datos, como un `id`.
+Esto es una buena práctica para manejar los errores de forma personalizada, con códigos de error propios que luego serán manejados en el frontend con mensajes o flujos específicos.
+
+---
+
+## Loading states y Suspense
+
+Cuando los datos tardan en llegar, es buena práctica mostrar un estado de carga.
+
+### En Client-side:
+```typescript
+if (!data) return <p>Cargando...</p>;
+```
+
+### En Server-side con App Router
+
+Podemos usar `loading.tsx`:
+```typescript
+// app/products/loading.tsx
+
+export default function Loading() {
+  return <p>Cargando productos...</p>;
+}
+```
+
+Next.js mostrará este archivo automáticamente mientras carga los datos.
+
+---
 
 ## Ejercicio propuesto
 
-### Construcción de un listado de Pokemons utilizando la API PokeAPI
+Modificación de la actividad anterior para:
 
-Crear un componente `PokemonList` que, al montarse, realice una petición HTTP con axios para obtener los primeros 20 Pokemons (ver especificación de la API en https://pokeapi.co). Estos Pokemons deben ser renderizados en la lista, en forma de componentes `PokemonItem`, y mostrar en cada uno sus propiedades utilizando un html básico. Además, cada item debe ser en sí mismo un botón presionable, y también se debe mostrar en el componente la cantidad de veces que fue usado.
+1. Que la lista de Pokemons ahora sea un **client side component** que utilice la librería **TanStack Query** para pedir los datos.
 
-Puede utilizar el Network Inspector para verificar que no estén haciendo llamadas infinitas a la API por algún error de código.
+2. Utilizar alguna librería externa a elección para mostrar un **skeleton** mientras la página carga.
 
-https://developer.chrome.com/docs/devtools/network?hl=es-419
+3. Además, desarrollar un componente de **paginación** para poder cambiar de página, simplemente un botón de "cargar más" que amplíe la cantidad de elementos por página (puede utilizar un state para esto, y pasárselo como argumento al hook de React Query).
+
+4. Que el **detalle de un Pokemon**, sea completamente renderizado del lado del servidor.
+
+5. Utilizar las herramientas que da Next.js para que la experiencia sea agradable para el usuario, como el archivo `loading`.

@@ -1,6 +1,6 @@
-# Mini Práctica 4 - Hooks en React
+# Mini Práctica 6 - Data Fetching en Next.js
 
-Listado interactivo de Pokémons usando React Hooks.
+Implementación de Client Side Components mediante la libreria TanStackQuery en la lista de Pokemons y Server Side Components en la página de cada Pokemon.
 
 ## Instalación
 
@@ -11,15 +11,11 @@ npm run dev
 
 ## Ejercicio
 
-Crear un componente `PokemonList` que:
-- Obtenga los primeros 20 Pokémons de [PokeAPI](https://pokeapi.co)
-- Renderice cada uno como un `PokemonItem` clickeable
-- Muestre cuántas veces fue clickeado cada Pokémon
+Modificar la actividad 5 para que:
+- La lista de Pokemons sea client side component.
+ - Mostrar un skeleton mientras la pagina carga.
+ - Desarrollar un componente para ampliar la cantidad de componentes por página.
+- El detalle de cada Pokemon sea server side component.
+ - Utilizar el archivo loading provisto por next.js
 
-## Verificar
-
-Abre DevTools → Network y verifica que solo haya **una** llamada a la API.
-
----
-
-📖 Ver [TUTORIAL.md](./TUTORIAL.md) para la teoría completa sobre hooks y ciclo de vida.
+📖 Ver [TUTORIAL.md](./TUTORIAL.md) para la teoría completa sobre data fetching.
