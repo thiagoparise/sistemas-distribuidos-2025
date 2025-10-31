@@ -24,7 +24,8 @@ async function fetchPokemon(id: string): Promise<Pokemon> {
 }
 
 export default async function PokemonCard({params,}: {params: {id: string}} ) {
-    const pokemon = await fetchPokemon(params.id);
+    const { id } = await params;
+    const pokemon = await fetchPokemon(id);
     
     if (!pokemon) return <PokemonSkeleton />;
 
